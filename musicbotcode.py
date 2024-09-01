@@ -55,6 +55,6 @@ client = commands.Bot(command_prefix="!", intents=intents)
 
 async def main():
     await client.add_cog(MusicBot(client)) # Makes bot modular
-    await client.start('PUT TOKEN HERE') # Token
+    await client.start('PUT TOKEN HERE') # Token goes here
 
 asyncio.run(main())
