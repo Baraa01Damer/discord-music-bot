@@ -3,7 +3,9 @@ Discord Music Bot
 
 Overview
 --------
-This is a simple Discord music bot that can search for and play audio from YouTube (At the moment. I'm planning on adding Soundcloud, Spotify, and local file support) directly in a voice channel. The bot supports basic functionalities like playing songs based on a search query, managing a queue, and skipping currently playing songs.
+A simple Discord music bot that can search for and play audio from YouTube¹ directly in a voice channel. The bot supports basic functionalities like playing songs based on a search query, managing a queue, and skipping currently playing songs.
+
+¹I'm planning on adding Soundcloud, Spotify, and maybe local file support in the future.
 
 Features
 --------
