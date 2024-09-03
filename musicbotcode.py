@@ -7,17 +7,9 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
 
-FFMPEG_OPTIONS = {
-    "options": "-vn",
-    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-}
+FFMPEG_OPTIONS = {"options": "-vn", "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",}
 
-YDL_OPTIONS = {
-    'format': 'bestaudio/best',
-    'quiet': True,
-    'extract_flat': False,
-    'skip_download': True
-}
+YDL_OPTIONS = {'format': 'bestaudio/best', 'quiet': True, 'extract_flat': False, 'skip_download': True}
 
 class MusicBot(commands.Cog):
     def __init__(self, client):
