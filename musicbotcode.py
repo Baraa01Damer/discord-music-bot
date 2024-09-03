@@ -1,93 +1,105 @@
-# Importing necessary libraries for the Discord bot
 import discord
-from discord.ext import commands  # Extension for adding commands to the bot
-import yt_dlp  # Library for downloading and extracting info from YouTube videos
-import asyncio  # Library to handle asynchronous operations
+from discord.ext import commands
+import yt_dlp
+import asyncio
 
-# Define the bot's intents, specifying what events the bot should listen for
 intents = discord.Intents.default()
-intents.message_content = True  # Allows the bot to read message content
-intents.voice_states = True  # Allows the bot to connect to voice channels
+intents.message_content = True
+intents.voice_states = True
 
-# FFMPEG options for audio streaming, including reconnect options for stream stability
 FFMPEG_OPTIONS = {
-    "options": "-vn",  # No video
+    "options": "-vn",
     "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
 }
 
-# yt_dlp options for audio extraction, specifying to get the best audio and avoid playlists
-YDL_OPTIONS = {"format": "bestaudio", "noplaylist": True}
+YDL_OPTIONS = {
+    'format': 'bestaudio/best',
+    'quiet': True,
+    'extract_flat': False,
+    'skip_download': True
+}
 
-# Defining the MusicBot class, which is a Discord bot cog for music-related commands
 class MusicBot(commands.Cog):
     def __init__(self, client):
-        self.client = client  # Reference to the bot client
-        self.queue = []  # Queue to store songs to be played
+        self.client = client
+        self.queue = []
 
     @commands.command()
     async def play(self, ctx, *, search):
-        """
-        Command to play a song based on a search query.
-        If the bot is not connected to a voice channel, it will connect.
-        Adds the song to the queue and starts playing if not already.
-        """
-        # Check if the user is in a voice channel
         voice_channel = ctx.author.voice.channel if ctx.author.voice else None
         if not voice_channel:
-            return await ctx.send("ur not in a vc dumbass")
+            return await ctx.send("You're not in a voice channel!")
 
-        # Connect to the voice channel if the bot is not already connected
         if not ctx.voice_client:
             await voice_channel.connect()
 
-        async with ctx.typing():  # Indicate that the bot is processing
+        async with ctx.typing():
             with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-                # Search for the video using yt_dlp
-                info = ydl.extract_info(f"ytsearch:{search}", download=False)
-                if "entries" in info:
-                    info = info["entries"][0]  # Get the first search result
-                url = info["url"]
-                title = info["title"]
-                self.queue.append((url, title))  # Add the song to the queue
-                await ctx.send(f"Added to queue: **{title}**")
+                info = ydl.extract_info(search, download=False)
 
-            # Play the next song if the bot is not currently playing
+                if 'entries' in info:  # If it's a playlist
+                    for entry in info['entries']:
+                        url = entry['url']
+                        title = entry['title']
+                        self.queue.append((url, title))
+                    await ctx.send(f"Added {len(info['entries'])} songs to the queue from playlist.")
+                else:  # If it's a single video
+                    url = info['url']
+                    title = info['title']
+                    self.queue.append((url, title))
+                    await ctx.send(f"Added to queue: **{title}**")
+
             if not ctx.voice_client.is_playing():
                 await self.play_next(ctx)
 
     async def play_next(self, ctx):
-        """
-        Helper method to play the next song in the queue.
-        Called automatically after the current song finishes.
-        """
         if self.queue:
-            url, title = self.queue.pop(0)  # Get the next song from the queue
-            # Create an audio source from the URL
-            source = await discord.FFmpegOpusAudio.from_probe(url, **FFMPEG_OPTIONS)
-            # Play the audio and set up a callback to play the next song when done
-            ctx.voice_client.play(
-                source, after=lambda _: self.client.loop.create_task(self.play_next(ctx))
-            )
-            await ctx.send(f"Now Playing **{title}**")
+            url, title = self.queue.pop(0)
+            try:
+                with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+                    info = ydl.extract_info(url, download=False)
+                    url = info['url']  # Ensure we get the direct URL for the audio stream
+
+                source = await discord.FFmpegOpusAudio.from_probe(url, **FFMPEG_OPTIONS)
+                ctx.voice_client.play(
+                    source, after=lambda _: self.client.loop.create_task(self.play_next(ctx))
+                )
+                await ctx.send(f"Now Playing **{title}**")
+            except Exception as e:
+                await ctx.send(f"An error occurred while trying to play **{title}**: {e}")
+                await self.play_next(ctx)  # Try to play the next song in case of an error
         elif not ctx.voice_client.is_playing():
-            await ctx.send("queue is empty dumbass")  # Notify when the queue is empty
+            await ctx.send("The queue is empty.")
 
     @commands.command()
     async def skip(self, ctx):
-        """
-        Command to skip the currently playing song.
-        """
         if ctx.voice_client and ctx.voice_client.is_playing():
-            ctx.voice_client.stop()  # Stop the current song, triggering the next one
-            await ctx.send("who tf played this shit?? Skipped.")
+            ctx.voice_client.stop()
+            await ctx.send("Skipped the current song.")
 
-# Creating a bot instance with the specified command prefix and intents
+    @commands.command(name="queue")
+    async def show_queue(self, ctx):
+        if self.queue:
+            queue_str = "\n".join([f"{idx + 1}. {title}" for idx, (_, title) in enumerate(self.queue)])
+            await ctx.send(f"**Current Queue:**\n{queue_str}")
+        else:
+            await ctx.send("The queue is currently empty.")
+
 client = commands.Bot(command_prefix="!", intents=intents)
 
-# Main function to add the MusicBot cog and start the bot
 async def main():
-    await client.add_cog(MusicBot(client))  # Add the MusicBot cog to the bot
-    await client.start("TOKEN")  # Start the bot with the provided token
+    try:
+        await client.add_cog(MusicBot(client))
+        await client.start("TOKEN")
+    except asyncio.CancelledError:
+        print("Bot task was cancelled")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        await client.close()
 
-# Run the main function using asyncio
-asyncio.run(main())
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Bot stopped manually")
