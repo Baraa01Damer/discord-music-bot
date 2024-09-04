@@ -2,14 +2,23 @@ import discord
 from discord.ext import commands
 import yt_dlp
 import asyncio
+import random
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
 
-FFMPEG_OPTIONS = {"options": "-vn", "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",}
+FFMPEG_OPTIONS = {
+    "options": "-vn",
+    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+}
 
-YDL_OPTIONS = {'format': 'bestaudio/best', 'quiet': True, 'extract_flat': False, 'skip_download': True}
+YDL_OPTIONS = {
+    'format': 'bestaudio/best',
+    'quiet': True,
+    'extract_flat': False,
+    'skip_download': True
+}
 
 class MusicBot(commands.Cog):
     def __init__(self, client):
@@ -27,19 +36,29 @@ class MusicBot(commands.Cog):
 
         async with ctx.typing():
             with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-                info = ydl.extract_info(search, download=False)
+                try:
+                    # Check if it's a URL or a search term
+                    if "youtube.com" in search or "youtu.be" in search:
+                        info = ydl.extract_info(search, download=False)
+                    else:
+                        # Search for the video on YouTube
+                        info = ydl.extract_info(f"ytsearch:{search}", download=False)
+                        info = info['entries'][0]  # Take the first result from the search
 
-                if 'entries' in info:  # If it's a playlist
-                    for entry in info['entries']:
-                        url = entry['url']
-                        title = entry['title']
+                    if 'entries' in info:  # If it's a playlist
+                        for entry in info['entries']:
+                            url = entry['url']
+                            title = entry['title']
+                            self.queue.append((url, title))
+                        await ctx.send(f"Added {len(info['entries'])} songs to the queue from playlist.")
+                    else:  # If it's a single video or search result
+                        url = info['url']
+                        title = info['title']
                         self.queue.append((url, title))
-                    await ctx.send(f"Added {len(info['entries'])} songs to the queue from playlist.")
-                else:  # If it's a single video
-                    url = info['url']
-                    title = info['title']
-                    self.queue.append((url, title))
-                    await ctx.send(f"Added to queue: **{title}**")
+                        await ctx.send(f"Added to queue: **{title}**")
+
+                except Exception as e:
+                    await ctx.send(f"An error occurred: {e}")
 
             if not ctx.voice_client.is_playing():
                 await self.play_next(ctx)
@@ -76,6 +95,14 @@ class MusicBot(commands.Cog):
             await ctx.send(f"**Current Queue:**\n{queue_str}")
         else:
             await ctx.send("The queue is currently empty.")
+
+    @commands.command(name="shuffle")
+    async def shuffle_queue(self, ctx):
+        if self.queue:
+            random.shuffle(self.queue)  # Shuffle the queue in place
+            await ctx.send("The queue has been shuffled.")
+        else:
+            await ctx.send("The queue is empty, nothing to shuffle.")
 
 client = commands.Bot(command_prefix="!", intents=intents)
 
