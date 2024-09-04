@@ -7,13 +7,6 @@ A simple Discord music bot that can search for and play audio from YouTube¹ dir
 
 ¹I'm planning on adding Soundcloud, Spotify, and maybe local file support in the future.
 
-Features
---------
-- Play audio from YouTube using search queries.
-- Manage a queue of songs.
-- Skip the currently playing song.
-- Automatically play the next song in the queue.
-
 Commands:
 ----------
 - `!play [search query]`: Searches YouTube for the provided query and adds the first result to the queue. If no song is playing, it will start playing immediately.
