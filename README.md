@@ -14,11 +14,8 @@ Features
 - Skip the currently playing song.
 - Automatically play the next song in the queue.
 
-Instructions
+Commands:
 ----------
-1. **Invite the bot** to your server
-2. **Join a voice channel** on your server.
-3. **Use the bot commands**:
 - `!play [search query]`: Searches YouTube for the provided query and adds the first result to the queue. If no song is playing, it will start playing immediately.
 - `!skip`: Skips the currently playing song and plays the next one in the queue.
 - `!shuffle`: Shuffles songs in a queue.
